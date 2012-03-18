@@ -201,8 +201,6 @@ void setup()  {
   pinMode(rightEyeRed, OUTPUT); // Pin output at rightEyeRed
   pinMode(leftEyeRed, OUTPUT); // Pin output at leftEyeRed
   pinMode(wakePin, INPUT); // Pin input at wakePin
-  Serial.begin(9600); // 
-//  myTimer(); // Comment this out when you've adjusted DelayCount
 }
 
 
@@ -232,12 +230,9 @@ This function delays the specified number of 1/10 milliseconds
 ***************************************************/
 
 void delay_one_tenth_ms(unsigned long int ms) {
-  unsigned long int timer;
-  const unsigned long int DelayCount=196;  // Default: 87 - this value was determined by trial and error
- 
+  // using Arduino native function
   while (ms != 0) {
-    // Toggling PD0 is done here to force the compiler to do this loop, rather than optimize it away
-    for (timer=0; timer <= DelayCount; timer++) {PIND |= 0b0000001;};
+    delayMicroseconds(100);  // pauses for 100 microseconds
     ms--;
   }
 }
@@ -466,23 +461,4 @@ void wakeUpNow()        // here the interrupt is handled after wakeup
   // we don't really need to execute any special functions here, since we
   // just want the thing to wake up
 }
-
-/***************************************************
-Timer function - millisecond count is sent to serial monitor at start
-of the show and again just before sleeping. Make the milliseconds match
-as closely as possible to the sum of bwDuration column. This is achieved
-by changing delayCount. delayCount from Mitch Altman's original sketch
-was at 87. But we're using a faster chip, so I've determined for the 
-arduino delayCount should be somewhere around 196.
-***************************************************/
-void myTimer(){
-  Serial.println("  ");
-  Serial.print("Time: ");
-  long int time = millis();
-  //prints time since program started
-  Serial.print(time);
-  Serial.println("  ");
-  // This function is a little quirky, but it works.
-}
-
 
