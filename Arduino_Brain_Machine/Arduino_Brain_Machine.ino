@@ -252,14 +252,9 @@ void loop() {
 ***************************************************/
 
 void delay_one_tenth_ms(unsigned long int ms) {
-  unsigned long int timer;
-  const unsigned long int DelayCount = 196; // Default: 87 - this value was determined by trial and error
-
+  // using Arduino native function
   while (ms != 0) {
-    // Toggling PD0 is done here to force the compiler to do this loop, rather than optimize it away
-    for (timer = 0; timer <= DelayCount; timer++) {
-      PIND |= 0b0000001;
-    };
+    delayMicroseconds(100);  // pauses for 100 microseconds
     ms--;
   }
 }
