@@ -12,7 +12,7 @@ Difference from fork's origin:
 
 * The `Tone` library is no longer part of the *Arduino IDE* distribution.
   You can download it [from Google Code](https://code.google.com/archive/p/arduino-tone/downloads).
-* Once you donload it, and add the zip to the library, you'll get an error that `wiring.h` wasn't found.
+* Once you download it, and add the zip to the library, you'll get an error that `wiring.h` wasn't found.
   Simply edit `Tone.cpp` and change `#include <wiring.h>` to `#include <wiring_private.h>`, as explained
   [here](https://forum.arduino.cc/index.php?topic=88449.msg664722#msg664722).
 
