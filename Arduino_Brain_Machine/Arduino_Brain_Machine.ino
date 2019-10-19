@@ -1,3 +1,4 @@
+
 /***************************************************
 Sketch: Sound & Light Machine for Arduino
 Author: Chris Sparnicht - http://low.li
@@ -43,9 +44,9 @@ And to access brainwaveTab[3].bwDuration, which is a double-word, this is how to
 LIBRARIES - Define necessary libraries here.
 ***************************************************/
 #include <avr/pgmspace.h> // for arrays - PROGMEM 
-#include <Tone.h> // Include the arduino tone library
 #include <avr/sleep.h> // A library to control the sleep mode
 #include <avr/power.h> // A library to control power
+#include <Tone.h> // Download from https://github.com/bhagman/Tone
 
 /***************************************************
 GLOBALS
@@ -54,8 +55,9 @@ which pin we'll use i one please, rather than having to search and replace
 in many places.
 ***************************************************/
 
-
-//#define DEBUG // uncoment if you want Serial timing reports for fine tuning
+// =============== uncoment if you want Serial debug reports ===============
+//#define DEBUG
+// =========================================================================
 
 #define rightEyeRed 5 // Define pinout for right eye
 #define leftEyeRed 6 // Define pinout for left eye
@@ -210,6 +212,8 @@ void setup()  {
 #ifdef DEBUG
   Serial.println("Waiting for wake button...");
 #endif
+  analogWrite(rightEyeRed, 0);  // common anode -
+  analogWrite(leftEyeRed, 0);  // 0 means 'HIGH'
   pinMode(wakePin, INPUT); // Pin input at wakePin
   while (digitalRead(wakePin) == HIGH) {
     delay(50);

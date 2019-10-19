@@ -8,13 +8,9 @@ Difference from fork's origin:
 2. More serial debug prints (note that all serial related code is now
    inside `#ifdef DEBUG` blocks).
 
-### Compatibility notes
+3. For boring physical reasons, the `wake` button has moved from pin 2 to 3.
 
-* The `Tone` library is no longer part of the *Arduino IDE* distribution.
-  You can download it [from Google Code](https://code.google.com/archive/p/arduino-tone/downloads).
-* Once you download it, and add the zip to the library, you'll get an error that `wiring.h` wasn't found.
-  Simply edit `Tone.cpp` and change `#include <wiring.h>` to `#include <wiring_private.h>`, as explained
-  [here](https://forum.arduino.cc/index.php?topic=88449.msg664722#msg664722).
+**Note:** you should download Bhagman's `Tone` library [here](https://github.com/bhagman/Tone#readme).
 
 
 ### Original README.txt
