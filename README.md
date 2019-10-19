@@ -5,13 +5,14 @@ Difference from fork's origin:
    the LED connections are OK), and waits until the wake button
    is pressed.
 
-2. More serial debug prints (note that all serial related code is now
+1. More serial debug prints (note that all serial related code is now
    inside `#ifdef DEBUG` blocks).
 
-3. For boring physical reasons, the `wake` button has moved from pin 2 to 3.
+1. For boring physical reasons, the `wake` button has moved from pin 2 to 3.
 
 **Note:** you should download Bhagman's `Tone` library [here](https://github.com/bhagman/Tone#readme).
 
+![Session chart](arduino-brain-machine-session.png)
 
 ### Original README.txt
 
