@@ -1,4 +1,4 @@
-Difference from fork's origin:
+#### Difference from fork's origin:
 
 1. Instead of starting the ~20m sequence right after reset,
    It turns both LEDs on (to indicate the state, and to verify
@@ -12,11 +12,14 @@ Difference from fork's origin:
 
 **Note:** you should download Bhagman's `Tone` library [here](https://github.com/bhagman/Tone#readme).
 
-Session chart (~19min meditation)
+#### Session chart (~19min meditation)
 ![Session chart](arduino-brain-machine-session.png)
 
-Example breadboard setup
+#### Example breadboard setup
 ![Example breadboard setup](arduino-brain-machine_bb.png)
+
+#### [Photos](https://pixelfed.tokyo/c/89862350668173312)
+[![We are not professionals](https://pixelfed.tokyo/storage/m/9415380b19c20b948c98d7c5f1fb65710b040a9e/d07f0a138e852885aa85b4d0b6b9a1743b0dbedb/knQS8mcwlefh8BOtyJDqrUjUKWhdBhFqdee2E2wz.gif)](https://pixelfed.tokyo/c/89862350668173312)
 
 ### Original README.txt
 
