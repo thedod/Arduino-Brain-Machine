@@ -65,6 +65,11 @@ in many places.
 #define lefttEarLow 10 // Define pinout for left ear
 #define wakePin 2 // the input pin where the pushbutton is connected.
 
+// Common anode. 255 is off
+#define LED_INTENSITY 63 // 0 to 255
+#define LED_ON (255-LED_INTENSITY)
+#define LED_OFF 255 
+
 /***************************************************
 BRAINWAVE TABLE
 See 'Some information about PROGMEM' above.
@@ -212,8 +217,8 @@ void setup()  {
 #ifdef DEBUG
   Serial.println("Waiting for wake button...");
 #endif
-  analogWrite(rightEyeRed, 0);  // common anode -
-  analogWrite(leftEyeRed, 0);  // 0 means 'HIGH'
+  analogWrite(rightEyeRed, LED_ON);
+  analogWrite(leftEyeRed, LED_ON);
   pinMode(wakePin, INPUT); // Pin input at wakePin
   while (digitalRead(wakePin) == HIGH) {
     delay(50);
@@ -239,15 +244,13 @@ void loop() {
 #ifdef DEBUG
     Serial.print("Done ");
     Serial.println(millis());
-    delay(1000); // let Serial send this before cutting off power ;)
 #endif
-
   // Shut down everything and put the CPU to sleep
-  analogWrite(rightEyeRed, 255);  // common anode -
-  analogWrite(leftEyeRed, 255);  // HIGH means 'off'
+  analogWrite(rightEyeRed, LED_OFF);
+  analogWrite(leftEyeRed, LED_OFF);
   rightEar.stop();
   leftEar.stop();
-
+  delay(1000); // let the dust settle...
   sleepNow();
 }
 
@@ -276,13 +279,13 @@ void delay_one_tenth_ms(unsigned long int ms) {
 
 void blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
-    analogWrite(rightEyeRed, 0);  // common anode -
-    analogWrite(leftEyeRed, 0);  // LOW means 'on'
+    analogWrite(rightEyeRed, LED_ON);
+    analogWrite(leftEyeRed, LED_ON);
     // turn on LEDs
     delay_one_tenth_ms(onTime);   //   for onTime
 
-    analogWrite(rightEyeRed, 255);  // common anode -
-    analogWrite(leftEyeRed, 255);  // HIGH means 'off'
+    analogWrite(rightEyeRed, LED_OFF);
+    analogWrite(leftEyeRed, LED_OFF);
     // turn off LEDs
     delay_one_tenth_ms(offTime);  //   for offTime
   }
@@ -290,13 +293,13 @@ void blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned 
 
 void alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
-    analogWrite(rightEyeRed, 0);  // common anode -
-    analogWrite(leftEyeRed, 255);  // LOW means 'on'
+    analogWrite(rightEyeRed, LED_ON);
+    analogWrite(leftEyeRed, LED_OFF);
     // turn on LEDs
     delay_one_tenth_ms(onTime);   //   for onTime
 
-    analogWrite(rightEyeRed, 255);  // common anode -
-    analogWrite(leftEyeRed, 0);  // HIGH means 'off'
+    analogWrite(rightEyeRed, LED_OFF);
+    analogWrite(leftEyeRed, LED_ON);
     // turn off LEDs
     delay_one_tenth_ms(offTime);  //   for offTime
   }

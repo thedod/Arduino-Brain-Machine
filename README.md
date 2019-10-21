@@ -12,7 +12,11 @@ Difference from fork's origin:
 
 **Note:** you should download Bhagman's `Tone` library [here](https://github.com/bhagman/Tone#readme).
 
+Session chart (~19min meditation)
 ![Session chart](arduino-brain-machine-session.png)
+
+Example breadboard setup
+![Example breadboard setup](arduino-brain-machine_bb.png)
 
 ### Original README.txt
 
