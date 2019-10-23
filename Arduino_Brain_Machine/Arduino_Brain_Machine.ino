@@ -1,47 +1,47 @@
 
 /***************************************************
-Sketch: Sound & Light Machine for Arduino
-Author: Chris Sparnicht - http://low.li
-Creation Date: 2011.01.31
-Last Modification Date: 2011.02.12
-License: Creative Commons 2.5 Attrib. & Share Alike
+  Sketch: Sound & Light Machine for Arduino
+  Author: Chris Sparnicht - http://low.li
+  Creation Date: 2011.01.31
+  Last Modification Date: 2011.02.12
+  License: Creative Commons 2.5 Attrib. & Share Alike
 
-Derivation and Notes:
-Make sure you have audio stereo 10K Ohm potentiometer to reduce
-the volume of the audio with your headset. If you don't,
-you might damage your ear drums, your arduino or your headset.
+  Derivation and Notes:
+  Make sure you have audio stereo 10K Ohm potentiometer to reduce
+  the volume of the audio with your headset. If you don't,
+  you might damage your ear drums, your arduino or your headset.
 
-Included with this sketch is a png diagram.
+  Included with this sketch is a png diagram.
 
-This arduino sketch is based on the original Sound & Light Machine
-by - Mitch Altman - 19-Mar-07 as featured in Make Magazine 10.
-http://makezine.com/10/brainwave/
+  This arduino sketch is based on the original Sound & Light Machine
+  by - Mitch Altman - 19-Mar-07 as featured in Make Magazine 10.
+  http://makezine.com/10/brainwave/
 
-See notes in code below for how I adapted Mitch Altman's version for Arduino
+  See notes in code below for how I adapted Mitch Altman's version for Arduino
 
-The sleep coding comes partially from here:
-http://www.arduino.cc/playground/Learning/ArduinoSleepCode
+  The sleep coding comes partially from here:
+  http://www.arduino.cc/playground/Learning/ArduinoSleepCode
 ***************************************************/
 
 /***************************************************
-SOME INFORMATION ABOUT PROGMEM:
-First, you have to use #include <avr/pgmspace.h> for table arrays - PROGMEM
-The Arduino compiler creates code that will transfer all constants into RAM when the microcontroller
-resets.  This hardward could probably hold all this data in memory, but since the original system
-used a table (brainwaveTab) that is was too large to transfer into RAM in the original microcontroller,
-we're taking the same approach.  This is accomplished by using the library for PROGMEM.
-(This is used below in the definition for the brainwaveTab).  Since the
-C compiler assumes that constants are in RAM, rather than in program memory, when accessing
-the brainwaveTab, we need to use the pgm_read_byte() and pgm_read_dword() macros, and we need
-to use the brainwveTab as an address, i.e., precede it with "&".  For example, to access
-brainwaveTab[3].bwType, which is a byte, this is how to do it:
+  SOME INFORMATION ABOUT PROGMEM:
+  First, you have to use #include <avr/pgmspace.h> for table arrays - PROGMEM
+  The Arduino compiler creates code that will transfer all constants into RAM when the microcontroller
+  resets.  This hardward could probably hold all this data in memory, but since the original system
+  used a table (brainwaveTab) that is was too large to transfer into RAM in the original microcontroller,
+  we're taking the same approach.  This is accomplished by using the library for PROGMEM.
+  (This is used below in the definition for the brainwaveTab).  Since the
+  C compiler assumes that constants are in RAM, rather than in program memory, when accessing
+  the brainwaveTab, we need to use the pgm_read_byte() and pgm_read_dword() macros, and we need
+  to use the brainwveTab as an address, i.e., precede it with "&".  For example, to access
+  brainwaveTab[3].bwType, which is a byte, this is how to do it:
    pgm_read_byte( &brainwaveTab[3].bwType );
-And to access brainwaveTab[3].bwDuration, which is a double-word, this is how to do it:
+  And to access brainwaveTab[3].bwDuration, which is a double-word, this is how to do it:
    pgm_read_dword( &brainwaveTab[3].bwDuration );
  ***************************************************/
 
 /***************************************************
-LIBRARIES - Define necessary libraries here.
+  LIBRARIES - Define necessary libraries here.
 ***************************************************/
 #include <avr/pgmspace.h> // for arrays - PROGMEM 
 #include <avr/sleep.h> // A library to control the sleep mode
@@ -49,13 +49,13 @@ LIBRARIES - Define necessary libraries here.
 #include <Tone.h> // Download from https://github.com/bhagman/Tone
 
 /***************************************************
-GLOBALS
-We isolate calls to pins with these globals so we can change
-which pin we'll use i one please, rather than having to search and replace
-in many places.
+  GLOBALS
+  We isolate calls to pins with these globals so we can change
+  which pin we'll use i one please, rather than having to search and replace
+  in many places.
 ***************************************************/
 
-// =============== uncoment if you want Serial debug reports ===============
+// =============== uncomment if you want Serial debug reports ===============
 //#define DEBUG
 // =========================================================================
 
@@ -68,19 +68,19 @@ in many places.
 // Common anode. 255 is off
 #define LED_INTENSITY 63 // 0 to 255
 #define LED_ON (255-LED_INTENSITY)
-#define LED_OFF 255 
+#define LED_OFF 255
 
 /***************************************************
-BRAINWAVE TABLE
-See 'Some information about PROGMEM' above.
-Table of values for meditation start with
-lots of Beta (awake / conscious)
-add Alpha (dreamy / trancy to connect with
+  BRAINWAVE TABLE
+  See 'Some information about PROGMEM' above.
+  Table of values for meditation start with
+  lots of Beta (awake / conscious)
+  add Alpha (dreamy / trancy to connect with
       subconscious Theta that'll be coming up)
-reduce Beta (less conscious)
-start adding Theta (more subconscious)
-pulse in some Delta (creativity)
-and then reverse the above to come up refreshed
+  reduce Beta (less conscious)
+  start adding Theta (more subconscious)
+  pulse in some Delta (creativity)
+  and then reverse the above to come up refreshed
 ***************************************************/
 struct brainwaveElement {
   char bwType;  // 'a' for Alpha, 'b' for Beta, 't' for Theta,'d' for Delta or 'g' for gamma ('0' signifies last entry in table
@@ -153,29 +153,29 @@ struct brainwaveElement {
 
 
 /***************************************************
-VARIABLES for tone generator
-The difference in Hz between two close tones can
-cause a 'beat'. The brain recognizes a pulse
-between the right ear and the left ear due
-to the difference between the two tones.
-Instead of assuming that one ear will always
-have a specific tone, we assume a central tone
-and create tones on the fly half the beat up
-and down from the central tone.
-If we set a central tone of 200, we can expect
-the following tones to be generated:
-Hz:      R Ear    L Ear    Beat
-Beta:    192.80   207.20   14.4
-Alpha:   194.45   205.55   11.1
-Theta:   197.00   203.00    6.0
-Delta:   198.90   201.10    2.2
+  VARIABLES for tone generator
+  The difference in Hz between two close tones can
+  cause a 'beat'. The brain recognizes a pulse
+  between the right ear and the left ear due
+  to the difference between the two tones.
+  Instead of assuming that one ear will always
+  have a specific tone, we assume a central tone
+  and create tones on the fly half the beat up
+  and down from the central tone.
+  If we set a central tone of 200, we can expect
+  the following tones to be generated:
+  Hz:      R Ear    L Ear    Beat
+  Beta:    192.80   207.20   14.4
+  Alpha:   194.45   205.55   11.1
+  Theta:   197.00   203.00    6.0
+  Delta:   198.90   201.10    2.2
 
-You can use any central tone you like. I think a
-lower tone between 100 and 220 is easier on the ears
-than higher tones for a meditation or relaxation.
-Others prefer something around 440 (A above Middle C).
-Isolating the central tone makes it easy for
-the user to choose a preferred frequency base.
+  You can use any central tone you like. I think a
+  lower tone between 100 and 220 is easier on the ears
+  than higher tones for a meditation or relaxation.
+  Others prefer something around 440 (A above Middle C).
+  Isolating the central tone makes it easy for
+  the user to choose a preferred frequency base.
 
 ***************************************************/
 float binauralBeat[] = { 14.4, 11.1, 6.0, 2.2, 40.4 }; // For beta, alpha, gamma and delta beat differences.
@@ -214,15 +214,7 @@ void setup()  {
   leftEar.begin(lefttEarLow); // Tone leftEar begins at pin output leftEarLow
   pinMode(rightEyeRed, OUTPUT); // Pin output at rightEyeRed
   pinMode(leftEyeRed, OUTPUT); // Pin output at leftEyeRed
-#ifdef DEBUG
-  Serial.println("Waiting for wake button...");
-#endif
-  analogWrite(rightEyeRed, LED_ON);
-  analogWrite(leftEyeRed, LED_ON);
   pinMode(wakePin, INPUT); // Pin input at wakePin
-  while (digitalRead(wakePin) == HIGH) {
-    delay(50);
-  }
 }
 
 
@@ -231,6 +223,15 @@ void setup()  {
 ***************************************************/
 
 void loop() {
+#ifdef DEBUG
+  Serial.println("Waiting for wake button...");
+#endif
+  analogWrite(rightEyeRed, LED_ON);
+  analogWrite(leftEyeRed, LED_ON);
+  while (digitalRead(wakePin) == HIGH) {
+    delay(50);
+  }
+
   int j = 0;
   while (pgm_read_byte(&brainwaveTab[j].bwType) != '0') {  // '0' signifies end of table
 #ifdef DEBUG
@@ -242,8 +243,8 @@ void loop() {
     j++;
   }
 #ifdef DEBUG
-    Serial.print("Done ");
-    Serial.println(millis());
+  Serial.print("Done ");
+  Serial.println(millis());
 #endif
   // Shut down everything and put the CPU to sleep
   analogWrite(rightEyeRed, LED_OFF);
