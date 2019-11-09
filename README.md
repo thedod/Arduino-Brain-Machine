@@ -1,3 +1,7 @@
+See [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki) for links to related materials, etc.
+
+----
+
 #### Difference from fork's origin:
 
 1. Instead of starting the ~20m sequence right after reset,
