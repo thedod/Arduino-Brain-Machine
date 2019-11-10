@@ -1,4 +1,8 @@
-See [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki) for links to related materials, etc.
+
+[![Photo gallery](https://raw.githubusercontent.com/thedod/Arduino-Brain-Machine/master/ascii-brain-machine.jpg)](https://pixelfed.tokyo/c/89862350668173312)
+
+For a short intro and useful brainwave-entrainment related links, see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
+
 
 ----
 
@@ -12,12 +16,7 @@ See [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki) for links t
 1. More serial debug prints (note that all serial related code is now
    inside `#ifdef DEBUG` blocks).
 
-1. For boring physical reasons, the `wake` button has moved from pin 2 to 3.
-
 **Note:** you should download Bhagman's `Tone` library [here](https://github.com/bhagman/Tone#readme).
-
-#### Session chart (~19min meditation)
-![Session chart](arduino-brain-machine-session.png)
 
 #### Example breadboard setup
 ![Example breadboard setup](arduino-brain-machine_bb.png)
