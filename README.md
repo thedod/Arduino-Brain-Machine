@@ -8,7 +8,10 @@ For a short intro and useful brainwave-entrainment related links, see [the wiki]
 * Once you turn the machine on, it enters `ready` mode (both eye LEDs are on).
 * Push the button to start running the session (eye LEDs would blink and earphones would beep).
 * Whenever you want to stop, just push the button to return to `ready` mode.
-* Once the session ends (takes about 20 minutes), the machine would enter `sleep` mode (eye LEDs are off, saves battery [Note: it still wastes some power, so turn the machine off if you're not planning to use it soon]). Press the button to go back to sleep mode.
+* Once the session ends (takes about 20 minutes), the machine would enter `sleep` mode
+  (eye LEDs are off, saves battery [Note: it still wastes some power,
+  so turn the machine off if you're not planning to use it soon]).
+  Press the button to go back to `ready` mode.
 
 
 ----
