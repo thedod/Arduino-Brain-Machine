@@ -1,17 +1,23 @@
 
-[![Photo gallery](https://raw.githubusercontent.com/thedod/Arduino-Brain-Machine/master/ascii-brain-machine.jpg)](https://pixelfed.tokyo/c/89862350668173312)
+[![Photo gallery](https://raw.githubusercontent.com/thedod/Arduino-Brain-Machine/master/brain-machine.jpg)](https://pixelfed.tokyo/c/89862350668173312)
 
 For a short intro and useful brainwave-entrainment related links, see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
+
+### How to use
+
+* Once you turn the machine on, it enters `ready` mode (both eye LEDs are on).
+* Push the button to start running the session (eye LEDs would blink and earphones would beep).
+* Whenever you want to stop, just push the button to return to `ready` mode.
+* Once the session ends (takes about 20 minutes), the machine would enter `sleep` mode (eye LEDs are off, saves battery [Note: it still wastes some power, so turn the machine off if you're not planning to use it soon]). Press the button to go back to sleep mode.
 
 
 ----
 
+### How to build
+
 #### Difference from fork's origin:
 
-1. Instead of starting the ~20m sequence right after reset,
-   It turns both LEDs on (to indicate the state, and to verify
-   the LED connections are OK), and waits until the wake button
-   is pressed.
+1. Pin 2 (that used to be the "wake up button") now has 3 functions (depending on state): start / stop / wake (from sleep mode), and the button's interrupt is always attached (not only during sleep mode).
 
 1. More serial debug prints (note that all serial related code is now
    inside `#ifdef DEBUG` blocks).

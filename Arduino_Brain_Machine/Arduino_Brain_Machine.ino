@@ -56,17 +56,17 @@
 ***************************************************/
 
 // =============== uncomment if you want Serial debug reports ===============
-//#define DEBUG
+// #define DEBUG
 // =========================================================================
 
 #define rightEyeRed 5 // Define pinout for right eye
 #define leftEyeRed 6 // Define pinout for left eye
 #define rightEarLow 9 // Define pinout for left ear
 #define lefttEarLow 10 // Define pinout for left ear
-#define wakePin 2 // the input pin where the pushbutton is connected.
+#define interruptPin 2 // the input pin where the pushbutton is connected.
 
 // Common anode. 255 is off
-#define LED_INTENSITY 63 // 0 to 255
+#define LED_INTENSITY 192 // 0 to 255
 #define LED_ON (255-LED_INTENSITY)
 #define LED_OFF 255
 
@@ -183,21 +183,37 @@ Tone rightEar;
 Tone leftEar;
 float centralTone = 440.0; //We're starting at this tone and spreading the binaural beat from there.
 
-//Button States below: Still Diagnostic - These values aren't used yet...
-int val = 0;     // val will be used to store the state of the input pin.
-int old_val = 0; // This variable stores the previous value of "val".
-int state = 0;  // 0 = LED off while 1 = LED on
-
 //Blink statuses for function 'blink_LEDs' and 'alt_blink_LEDS
 unsigned long int duration = 0;
 unsigned long int onTime = 0;
 unsigned long int offTime = 0;
 
+#define STATE_READY 0
+#define STATE_RUNNING 1
+#define STATE_SLEEPING 2
+volatile int machineState = STATE_READY;
+
+
+/***************************************************
+  Button interrupt function
+***************************************************/
+void buttonInterrupt()
+{
+  switch (machineState) {
+    case STATE_READY:
+      machineState = STATE_RUNNING;
+      break;
+    case STATE_RUNNING:
+    case STATE_SLEEPING:
+      machineState = STATE_READY; // Back to the normal ready/running cycle
+      break;
+  }
+}
 
 /***************************************************
   SETUP defines pins and tones.
   Arduino pins we'll use:
-  pin  2 - on/off switch
+  pin  2 - push button (interrupt)
   pin  5 - right ear
   pin  6 - left ear
   pin  9 - Left eye LED1
@@ -214,7 +230,9 @@ void setup()  {
   leftEar.begin(lefttEarLow); // Tone leftEar begins at pin output leftEarLow
   pinMode(rightEyeRed, OUTPUT); // Pin output at rightEyeRed
   pinMode(leftEyeRed, OUTPUT); // Pin output at leftEyeRed
-  pinMode(wakePin, INPUT); // Pin input at wakePin
+  pinMode(interruptPin, INPUT_PULLUP); // Pin input at interruptPin
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
 
 
@@ -224,12 +242,12 @@ void setup()  {
 
 void loop() {
 #ifdef DEBUG
-  Serial.println("Waiting for wake button...");
+  Serial.println("Waiting for button...");
 #endif
   analogWrite(rightEyeRed, LED_ON);
   analogWrite(leftEyeRed, LED_ON);
-  while (digitalRead(wakePin) == HIGH) {
-    delay(50);
+  while (machineState == STATE_READY) {
+    delay(50); // here we can read session selection POT once we have one
   }
 
   int j = 0;
@@ -238,8 +256,16 @@ void loop() {
     Serial.print(j);
     Serial.print(' ');
     Serial.println(millis());
+    // uncomment if debugging sleep mode and in a hurry ;)
+    // if (j > 2) {
+    //   break;  // when debugging, we don't need to do entire session
+    // }
+      */
 #endif
-    do_brainwave_element(j);
+    if (do_brainwave_element(j)) {
+      // interrupt button got us out of STATE_RUNNING
+      break;
+    }
     j++;
   }
 #ifdef DEBUG
@@ -251,20 +277,40 @@ void loop() {
   analogWrite(leftEyeRed, LED_OFF);
   rightEar.stop();
   leftEar.stop();
-  delay(1000); // let the dust settle...
-  sleepNow();
+  if (machineState != STATE_READY) {
+    // Session finished (we're not here due to an interrupt button push)
+    machineState = STATE_SLEEPING;
+#ifdef DEBUG
+    Serial.println("Sleeping...");
+    delay(1000); // let the dust settle...
+#endif
+    sleep_enable();          // enables the sleep bit in the mcucr register so sleep is possible. just a safety pin
+    sleep_mode();            // here the device is actually put to sleep
+    // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+    sleep_disable();            // first thing after waking from sleep: disable sleep...
+    delay(1000); // let the dust settle...
+#ifdef DEBUG
+    Serial.println("Woke up.");
+#endif
+  }
 }
 
 /***************************************************
   This function delays the specified number of 1/10 milliseconds
 ***************************************************/
 
-void delay_one_tenth_ms(unsigned long int ms) {
-  // using Arduino native function
-  while (ms != 0) {
-    delayMicroseconds(100);  // pauses for 100 microseconds
-    ms--;
+bool delay_decimiliseconds(unsigned long int dms) {
+  // returns true if interrupt button got us out of STATE_RUNNING
+  // https://www.arduino.cc/reference/en/language/functions/time/delaymicroseconds/ says
+  // "Currently, the largest value that will produce an accurate delay is 16383"
+  // so we do each decimilisecond as a separate call
+  for (int i = 0; i < dms; i++) {
+    delayMicroseconds(100); //
+    if (machineState != STATE_RUNNING) {
+      return true; // there was an interrupt
+    }
   }
+  return false;
 }
 
 /***************************************************
@@ -278,32 +324,40 @@ void delay_one_tenth_ms(unsigned long int ms) {
   for common anode, so "on" = LOW and "off" = HIGH.
 ***************************************************/
 
-void blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+  // returns true if interrupt button got us out of STATE_RUNNING
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
     analogWrite(rightEyeRed, LED_ON);
     analogWrite(leftEyeRed, LED_ON);
     // turn on LEDs
-    delay_one_tenth_ms(onTime);   //   for onTime
-
+    if (delay_decimiliseconds(onTime)) {  //   for onTime
+      return true;
+    }
     analogWrite(rightEyeRed, LED_OFF);
     analogWrite(leftEyeRed, LED_OFF);
     // turn off LEDs
-    delay_one_tenth_ms(offTime);  //   for offTime
+    if (delay_decimiliseconds(offTime)) { //   for offTime
+      return true;
+    }
   }
+  return false;
 }
 
-void alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+bool alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+  // returns true if interrupt button got us out of STATE_RUNNING
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
     analogWrite(rightEyeRed, LED_ON);
     analogWrite(leftEyeRed, LED_OFF);
-    // turn on LEDs
-    delay_one_tenth_ms(onTime);   //   for onTime
-
+    if (delay_decimiliseconds(onTime)) {  //   for onTime
+      return true;
+    }
     analogWrite(rightEyeRed, LED_OFF);
     analogWrite(leftEyeRed, LED_ON);
-    // turn off LEDs
-    delay_one_tenth_ms(offTime);  //   for offTime
+    if (delay_decimiliseconds(offTime)) { //   for offTime
+      return true;
+    }
   }
+  return false;
 }
 /***************************************************
   This function starts with a central audio frequency and
@@ -313,7 +367,9 @@ void alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsig
   (See notes above for beat creation method.)
 ***************************************************/
 
-void do_brainwave_element(int index) {
+bool do_brainwave_element(int index) {
+  // returns whatever bilnk_LEDs or alt_blink_LEDs returned,
+  // i.e. true if interrupt button got us out of STATE_RUNNING
   char brainChr = pgm_read_byte(&brainwaveTab[index].bwType);
 
   switch (brainChr) {
@@ -323,8 +379,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[0] / 2));
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
-      return;   // Beta
+      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
 
     case 'B':
       // Beta - with alternating blinks
@@ -332,8 +387,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[0] / 2));
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
-      return;   // Beta - with alternating blinks
+      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
 
     case 'a':
       // Alpha
@@ -341,8 +395,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[1] / 2));
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
-      return;   // Alpha
+      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
 
     case 'A':
       // Alpha
@@ -350,8 +403,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[1] / 2));
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
-      return;   // Alpha - with alternating blinks
+      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
 
     case 't':
       // Theta
@@ -361,8 +413,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[2] / 2));
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
-      return;   // Theta
+      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
 
     case 'T':
       // Theta
@@ -372,8 +423,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[2] / 2));
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
-      return;   // Theta - with alternating blinks
+      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
 
     case 'd':
       // Delta
@@ -381,8 +431,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[3] / 2));
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
-      return;   // Delta
+      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'D':
       // Delta
@@ -390,8 +439,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[3] / 2));
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
-      return;   // Delta
+      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'g':
       // Gamma
@@ -399,8 +447,7 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[4] / 2));
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
-      return;   // Gamma
+      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
 
     case 'G':
       // Gamma
@@ -408,87 +455,12 @@ void do_brainwave_element(int index) {
       leftEar.play(centralTone + (binauralBeat[4] / 2));
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
-      return;   // Gamma
+      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
 
     // this should never be executed, since we catch the end of table in the main loop
     default:
-      return;      // end of table
+      return true;      // end of table
   }
 }
 
-
-/***************************************************
-  SLEEP function
-***************************************************/
-void sleepNow()         // here we put the arduino to sleep
-{
-  /* Now is the time to set the sleep mode. In the Atmega8 datasheet
-     http://www.atmel.com/dyn/resources/prod_documents/doc2486.pdf on page 35
-     there is a list of sleep modes which explains which clocks and
-     wake up sources are available in which sleep mode.
-
-     In the avr/sleep.h file, the call names of these sleep modes are to be found:
-
-     The 5 different modes are:
-         SLEEP_MODE_IDLE         -the least power savings
-         SLEEP_MODE_ADC
-         SLEEP_MODE_PWR_SAVE
-         SLEEP_MODE_STANDBY
-         SLEEP_MODE_PWR_DOWN     -the most power savings
-
-     For now, we want as much power savings as possible, so we
-     choose the according
-     sleep mode: SLEEP_MODE_PWR_DOWN
-
-  */
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
-
-  sleep_enable();          // enables the sleep bit in the mcucr register
-  // so sleep is possible. just a safety pin
-
-  /* Now it is time to enable an interrupt. We do it here so an
-     accidentally pushed interrupt button doesn't interrupt
-     our running program. if you want to be able to run
-     interrupt code besides the sleep function, place it in
-     setup() for example.
-
-     In the function call attachInterrupt(A, B, C)
-     A   can be either 0 or 1 for interrupts on pin 2 or 3.
-
-     B   Name of a function you want to execute at interrupt for A.
-
-     C   Trigger mode of the interrupt pin. can be:
-                 LOW        a low level triggers
-                 CHANGE     a change in level triggers
-                 RISING     a rising edge of a level triggers
-                 FALLING    a falling edge of a level triggers
-
-     In all but the IDLE sleep modes only LOW can be used.
-  */
-
-  attachInterrupt(0, wakeUpNow, LOW); // use interrupt 0 (pin 2) and run function
-  // wakeUpNow when pin 2 gets LOW
-
-  sleep_mode();            // here the device is actually put to sleep!!
-  // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
-
-  sleep_disable();         // first thing after waking from sleep:
-  // disable sleep...
-  detachInterrupt(0);      // disables interrupt 0 on pin 2 so the
-  // wakeUpNow code will not be executed
-  // during normal running time.
-
-}
-
-/***************************************************
-  WAKE function
-***************************************************/
-void wakeUpNow()        // here the interrupt is handled after wakeup
-{
-  // execute code here after wake-up before returning to the loop() function
-  // timers and code using timers (serial.print and more...) will not work here.
-  // we don't really need to execute any special functions here, since we
-  // just want the thing to wake up
-}
 
