@@ -1,22 +1,9 @@
 
 [![Photo gallery](https://raw.githubusercontent.com/thedod/Arduino-Brain-Machine/master/brain-machine.jpg)](https://pixelfed.tokyo/c/89862350668173312)
 
-For a short intro and useful brainwave-entrainment related links, see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
-
-### How to use
-
-* Once you turn the machine on, it enters `ready` mode (both eye LEDs are on).
-* Push the button to start running the session (eye LEDs would blink and earphones would beep).
-* Whenever you want to stop, just push the button to return to `ready` mode.
-* Once the session ends (takes about 20 minutes), the machine would enter `sleep` mode
-  (eye LEDs are off, saves battery [Note: it still wastes some power,
-  so turn the machine off if you're not planning to use it soon]).
-  Press the button to go back to `ready` mode.
-
-
-----
-
-### How to build
+For [usage instructions](https://github.com/thedod/Arduino-Brain-Machine/wiki/How-to-use)
+and useful brainwave-entrainment related [links](https://github.com/thedod/Arduino-Brain-Machine/wiki/Related-links),
+see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
 
 #### Difference from fork's origin:
 
