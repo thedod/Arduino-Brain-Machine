@@ -28,16 +28,16 @@
   First, you have to use #include <avr/pgmspace.h> for table arrays - PROGMEM
   The Arduino compiler creates code that will transfer all constants into RAM when the microcontroller
   resets.  This hardward could probably hold all this data in memory, but since the original system
-  used a table (brainwaveTab) that is was too large to transfer into RAM in the original microcontroller,
+  used a table (chunkybrainwaveTab) that is was too large to transfer into RAM in the original microcontroller,
   we're taking the same approach.  This is accomplished by using the library for PROGMEM.
-  (This is used below in the definition for the brainwaveTab).  Since the
+  (This is used below in the definition for the chunkybrainwaveTab).  Since the
   C compiler assumes that constants are in RAM, rather than in program memory, when accessing
-  the brainwaveTab, we need to use the pgm_read_byte() and pgm_read_dword() macros, and we need
+  the chunkybrainwaveTab, we need to use the pgm_read_byte() and pgm_read_dword() macros, and we need
   to use the brainwveTab as an address, i.e., precede it with "&".  For example, to access
-  brainwaveTab[3].bwType, which is a byte, this is how to do it:
-   pgm_read_byte( &brainwaveTab[3].bwType );
-  And to access brainwaveTab[3].bwDuration, which is a double-word, this is how to do it:
-   pgm_read_dword( &brainwaveTab[3].bwDuration );
+  chunkybrainwaveTab[3].bwType, which is a byte, this is how to do it:
+   pgm_read_byte( &chunkybrainwaveTab[3].bwType );
+  And to access chunkybrainwaveTab[3].bwDuration, which is a double-word, this is how to do it:
+   pgm_read_dword( &chunkybrainwaveTab[3].bwDuration );
  ***************************************************/
 
 /***************************************************
@@ -55,20 +55,26 @@
   in many places.
 ***************************************************/
 
-// =============== uncomment if you want Serial debug reports ===============
+// =============== uncomment for debug options ===============
+// --- Serial debugging
 // #define DEBUG
+// --- Do a short session (usefull when debugging sleep mode)
+// #define SHORT_SESSION
 // =========================================================================
 
-#define rightEyeRed 5 // Define pinout for right eye
-#define leftEyeRed 6 // Define pinout for left eye
-#define rightEarLow 9 // Define pinout for left ear
-#define lefttEarLow 10 // Define pinout for left ear
+#define rightEarPin 9 // Define pinout for left ear
+#define leftEarPin 10 // Define pinout for left ear
+#define rightEyePin 5 // Define pinout for right eye
+#define leftEyePin 6 // Define pinout for left eye
 #define interruptPin 2 // the input pin where the pushbutton is connected.
+#define potPin A0 // user input potentiometer (session selection)
 
 // Common anode. 255 is off
-#define LED_INTENSITY 192 // 0 to 255
-#define LED_ON (255-LED_INTENSITY)
+int LEDIntensity = 127;
+#define LED_ON (255-LEDIntensity)
 #define LED_OFF 255
+
+// ====== Altman's "chunky" frequency-hopping method =======
 
 /***************************************************
   BRAINWAVE TABLE
@@ -82,11 +88,13 @@
   pulse in some Delta (creativity)
   and then reverse the above to come up refreshed
 ***************************************************/
-struct brainwaveElement {
+struct chunkyBrainwaveElement {
   char bwType;  // 'a' for Alpha, 'b' for Beta, 't' for Theta,'d' for Delta or 'g' for gamma ('0' signifies last entry in table
   // A, B, T, D and G offer alternating flash instead of concurrent flash.
   unsigned long int bwDuration;  // Duration of this Brainwave Type (divide by 10,000 to get seconds)
-} const brainwaveTab[] PROGMEM = {
+};
+
+const chunkyBrainwaveElement chunkybrainwaveTab[] PROGMEM = {
   { 'b', 600000 },
   { 'a', 100000 },
   { 'b', 200000 },
@@ -179,8 +187,8 @@ struct brainwaveElement {
 
 ***************************************************/
 float binauralBeat[] = { 14.4, 11.1, 6.0, 2.2, 40.4 }; // For beta, alpha, gamma and delta beat differences.
-Tone rightEar;
-Tone leftEar;
+Tone rightEarTone;
+Tone leftEarTone;
 float centralTone = 440.0; //We're starting at this tone and spreading the binaural beat from there.
 
 //Blink statuses for function 'blink_LEDs' and 'alt_blink_LEDS
@@ -188,15 +196,95 @@ unsigned long int duration = 0;
 unsigned long int onTime = 0;
 unsigned long int offTime = 0;
 
+
+// ====== Mindplace.com "creamy" frequency-transition method =======
+
+struct creamyBrainwaveElement {
+  int duration;  // Seconds
+  float frequency; // Hz
+};
+
+const creamyBrainwaveElement proteusGoodMorning04[] = {
+  {0, 8}, {120, 16}, {60, 25}, {60, 25}, {60, 20}, {60, 28}, {60, 20}, {60, 28},
+  {60, 20}, {60, 28}, {60, 20}, {60, 28}, {60, 20}, {60, 8}, {60, 20}, {0, 0}
+};
+
+const creamyBrainwaveElement proteusGoodNight43[] = {
+  {0, 9}, {280, 6}, {300, 3}, {200, 5}, {100, 3}, {20, 2}, {0, 0}
+};
+
+const creamyBrainwaveElement proteusVisuals22[] = {
+  {0, 8}, {60, 10}, {60, 16}, {60, 20}, {0, 16}, {60, 24}, {0, 20}, {120, 28}, {60, 24},
+  {60, 30}, {300, 24}, {30, 12}, {30, 24}, {30, 16}, {120, 30}, {150, 8}, {60, 8}, {0, 0}
+};
+
+const creamyBrainwaveElement proteusMeditation10[] = {
+  {0, 16}, {60, 16}, {240, 4}, {360, 4}, {120, 2}, {1080, 2}, {60, 8}, {60, 24},
+  {120, 24}, {0, 0}
+};
+
+
+
+/***************************************************
+  Session selection potentiometer
+***************************************************/
+
+#define NUM_SESSIONS 6
+#define SESSION_GOOD_MORNING 0
+#define SESSION_GOOD_NIGHT 1
+#define SESSION_VISUALS 2
+#define SESSION_MEDITATION 3
+#define SESSION_MEDITATION_CHUNKY 4
+#define SESSION_SETUP 5
+
+int currentSession;
+
+#define NUM_PROTEUS_SESSIONS 4
+
+const creamyBrainwaveElement *proteusSessions[NUM_PROTEUS_SESSIONS] = {
+  proteusGoodMorning04, proteusGoodNight43,
+  proteusVisuals22, proteusMeditation10
+};
+
+int blink_patterns[NUM_SESSIONS] = {
+  0B100000000000, // .     SESSION_GOOD_MORNING
+  0B100100000000, // ..    SESSION_GOOD_NIGHT
+  0B100100100000, // ...   SESSION_VISUALS
+  0B111000000000, // -     SESSION_MEDITATION
+  0B111001110000, // --    SESSION_MEDITATION_CHUNKY
+  0B101010101010, // blink SESSION_SETUP
+};
+
+#define BLINK_STATE(n) (((blink_patterns[n]>>n)&1)?HIGH:LOW)
+
+#define BLINK_SEGMENT_DURATION 100 // milliseconds
+#define BLINK_NUM_SEGMENTS 12
+#define CURRENT_BLINK_SEGMENT ((millis()/BLINK_SEGMENT_DURATION)%BLINK_NUM_SEGMENTS)
+
+int mapPot(int mapMin, int mapMax) {
+  // trim a bit of the edge values, because POTs are lousy and might not get there
+  return constrain(
+           map(analogRead(potPin), 23, 1000, mapMin, mapMax),
+           mapMin, mapMax);
+}
+
+void setLEDs(int state) {
+  analogWrite(rightEyePin, state);
+  analogWrite(leftEyePin, state);
+}
+
+void blinkSessionSelection(int session) {
+  setLEDs(blink_patterns[session] >> CURRENT_BLINK_SEGMENT & 1 ? LED_ON : LED_OFF);
+}
+
+/***************************************************
+  Button interrupt
+***************************************************/
 #define STATE_READY 0
 #define STATE_RUNNING 1
 #define STATE_SLEEPING 2
 volatile int machineState = STATE_READY;
 
-
-/***************************************************
-  Button interrupt function
-***************************************************/
 void buttonInterrupt()
 {
   switch (machineState) {
@@ -210,6 +298,7 @@ void buttonInterrupt()
   }
 }
 
+
 /***************************************************
   SETUP defines pins and tones.
   Arduino pins we'll use:
@@ -219,6 +308,7 @@ void buttonInterrupt()
   pin  9 - Left eye LED1
   pin 10 - Right eye LED2
   pin 11 - Button input
+  pin A0 - session selector potentiometer
   pin 5V - for common anode on LED's
   pin GND - ground for tones
 */
@@ -226,11 +316,12 @@ void setup()  {
 #ifdef DEBUG
   Serial.begin(9600);
 #endif
-  rightEar.begin(rightEarLow); // Tone rightEar begins at pin output rightEarLow
-  leftEar.begin(lefttEarLow); // Tone leftEar begins at pin output leftEarLow
-  pinMode(rightEyeRed, OUTPUT); // Pin output at rightEyeRed
-  pinMode(leftEyeRed, OUTPUT); // Pin output at leftEyeRed
-  pinMode(interruptPin, INPUT_PULLUP); // Pin input at interruptPin
+  rightEarTone.begin(rightEarPin); // Tone rightEarTone begins at pin output rightEarPin
+  leftEarTone.begin(leftEarPin); // Tone leftEarTone begins at pin output leftEarPin
+  pinMode(rightEyePin, OUTPUT); // Pin output at rightEye
+  pinMode(leftEyePin, OUTPUT); // Pin output at leftEye
+  pinMode(interruptPin, INPUT_PULLUP); // User input (push button)
+  pinMode(potPin, INPUT); // User input (potentiometer)
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
@@ -242,44 +333,113 @@ void setup()  {
 
 void loop() {
 #ifdef DEBUG
-  Serial.println("Waiting for button...");
+  Serial.println("Waiting for session selection...");
 #endif
-  analogWrite(rightEyeRed, LED_ON);
-  analogWrite(leftEyeRed, LED_ON);
   while (machineState == STATE_READY) {
-    delay(50); // here we can read session selection POT once we have one
+    currentSession = mapPot(0, NUM_SESSIONS - 1);
+    blinkSessionSelection(currentSession);
+    delay(50);
   }
+  setLEDs(LED_OFF);
 
-  int j = 0;
-  while (pgm_read_byte(&brainwaveTab[j].bwType) != '0') {  // '0' signifies end of table
 #ifdef DEBUG
-    Serial.print(j);
-    Serial.print(' ');
-    Serial.println(millis());
-    // uncomment if debugging sleep mode and in a hurry ;)
-    // if (j > 2) {
-    //   break;  // when debugging, we don't need to do entire session
-    // }
-      */
+  Serial.print("Chose session #");
+  Serial.println(currentSession);
 #endif
-    if (do_brainwave_element(j)) {
-      // interrupt button got us out of STATE_RUNNING
+  unsigned long startedAt = millis();
+  int j = 0;
+  switch (currentSession) {
+    case SESSION_SETUP:
+      while (machineState == STATE_RUNNING) {
+        LEDIntensity = mapPot(31, 255);
+        setLEDs(LED_ON);
+        delay(50);
+      }
+#ifdef DEBUG
+      Serial.print("Set intensity (0-255) to ");
+      Serial.println(LEDIntensity);
+#endif
       break;
-    }
-    j++;
+    case SESSION_GOOD_MORNING:
+    case SESSION_GOOD_NIGHT:
+    case SESSION_VISUALS:
+    case SESSION_MEDITATION:
+      creamyBrainwaveElement *session = proteusSessions[currentSession];
+      float currentFrequency = 0.0;
+      while (session[j].frequency > 0.0) { // 0.0 signifies end of table
+#ifdef DEBUG
+        Serial.print(j);
+        Serial.print(' ');
+        Serial.print(currentFrequency);
+        Serial.print(" -> ");
+        Serial.print(session[j].frequency);
+        Serial.print(" in ");
+        Serial.print(session[j].duration);
+        Serial.print(' ');
+        Serial.println(millis() - startedAt);
+#endif
+#ifdef SHORT_SESSION
+        if (j > 2) {
+          break;  // when debugging, we don't need to do entire session
+        }
+#endif
+        if (session[j].duration) {
+          int steps = session[j].duration * 10; // we split the element to 0.1s long steps
+#ifdef DEBUG
+          Serial.print(steps);
+          Serial.println(" steps");
+#endif
+          for (int t = 0; t < steps; t++) {
+            float freq = currentFrequency + (session[j].frequency - currentFrequency) * (float(t) / steps);
+            rightEarTone.play(centralTone - (freq / 2.0));
+            leftEarTone.play(centralTone + (freq / 2.0));
+            unsigned long halfWaveLength = round(5000.0 / freq);
+            if (blink_LEDs(1000, halfWaveLength, halfWaveLength)) { // 1000 decimilisecs = 0.1s
+            };
+          };
+        };
+        if (machineState != STATE_RUNNING) {
+          break; // interrupt button was pressed
+        };
+        currentFrequency = session[j].frequency;
+        j++;
+      };
+      break;
+    case SESSION_MEDITATION_CHUNKY:
+      while (pgm_read_byte(&chunkybrainwaveTab[j].bwType) != '0') {  // '0' signifies end of table
+#ifdef DEBUG
+        Serial.print(j);
+        Serial.print(' ');
+        Serial.print(pgm_read_byte(&chunkybrainwaveTab[j].bwType));
+        Serial.print(' ');
+        Serial.println(millis() - startedAt);
+#endif
+#ifdef SHORT_SESSION
+        if (j > 2) {
+          break;  // when debugging, we don't need to do entire session
+        }
+#endif
+        if (do_chunky_brainwave_element(j)) {
+          // interrupt button got us out of STATE_RUNNING
+          break;
+        }
+        j++;
+      }
+      break;
   }
 #ifdef DEBUG
-  Serial.print("Done ");
+  Serial.print("Done #");
+  Serial.print(currentSession);
+  Serial.print(' ');
   Serial.println(millis());
 #endif
-  // Shut down everything and put the CPU to sleep
-  analogWrite(rightEyeRed, LED_OFF);
-  analogWrite(leftEyeRed, LED_OFF);
-  rightEar.stop();
-  leftEar.stop();
   if (machineState != STATE_READY) {
     // Session finished (we're not here due to an interrupt button push)
+    // Shut down everything and put the CPU to sleep
     machineState = STATE_SLEEPING;
+    setLEDs(LED_OFF);
+    rightEarTone.stop();
+    leftEarTone.stop();
 #ifdef DEBUG
     Serial.println("Sleeping...");
     delay(1000); // let the dust settle...
@@ -327,14 +487,14 @@ bool delay_decimiliseconds(unsigned long int dms) {
 bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
-    analogWrite(rightEyeRed, LED_ON);
-    analogWrite(leftEyeRed, LED_ON);
+    analogWrite(rightEyePin, LED_ON);
+    analogWrite(leftEyePin, LED_ON);
     // turn on LEDs
     if (delay_decimiliseconds(onTime)) {  //   for onTime
       return true;
     }
-    analogWrite(rightEyeRed, LED_OFF);
-    analogWrite(leftEyeRed, LED_OFF);
+    analogWrite(rightEyePin, LED_OFF);
+    analogWrite(leftEyePin, LED_OFF);
     // turn off LEDs
     if (delay_decimiliseconds(offTime)) { //   for offTime
       return true;
@@ -346,13 +506,13 @@ bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned 
 bool alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
-    analogWrite(rightEyeRed, LED_ON);
-    analogWrite(leftEyeRed, LED_OFF);
+    analogWrite(rightEyePin, LED_ON);
+    analogWrite(leftEyePin, LED_OFF);
     if (delay_decimiliseconds(onTime)) {  //   for onTime
       return true;
     }
-    analogWrite(rightEyeRed, LED_OFF);
-    analogWrite(leftEyeRed, LED_ON);
+    analogWrite(rightEyePin, LED_OFF);
+    analogWrite(leftEyePin, LED_ON);
     if (delay_decimiliseconds(offTime)) { //   for offTime
       return true;
     }
@@ -367,95 +527,95 @@ bool alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsig
   (See notes above for beat creation method.)
 ***************************************************/
 
-bool do_brainwave_element(int index) {
+bool do_chunky_brainwave_element(int index) {
   // returns whatever bilnk_LEDs or alt_blink_LEDs returned,
   // i.e. true if interrupt button got us out of STATE_RUNNING
-  char brainChr = pgm_read_byte(&brainwaveTab[index].bwType);
+  char brainChr = pgm_read_byte(&chunkybrainwaveTab[index].bwType);
 
   switch (brainChr) {
     case 'b':
       // Beta
-      rightEar.play(centralTone - (binauralBeat[0] / 2));
-      leftEar.play(centralTone + (binauralBeat[0] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[0] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[0] / 2));
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
+      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'B':
       // Beta - with alternating blinks
-      rightEar.play(centralTone - (binauralBeat[0] / 2));
-      leftEar.play(centralTone + (binauralBeat[0] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[0] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[0] / 2));
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 347, 347 );
+      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'a':
       // Alpha
-      rightEar.play(centralTone - (binauralBeat[1] / 2));
-      leftEar.play(centralTone + (binauralBeat[1] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[1] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[1] / 2));
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
+      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
 
     case 'A':
       // Alpha
-      rightEar.play(centralTone - (binauralBeat[1] / 2));
-      leftEar.play(centralTone + (binauralBeat[1] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[1] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[1] / 2));
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 451, 450 );
+      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
 
     case 't':
       // Theta
       // start Timer 1 with the correct Offset Frequency for a binaural beat for the Brainwave Type
       //   to Right ear speaker through output OC1A (PB3, pin 15)
-      rightEar.play(centralTone - (binauralBeat[2] / 2));
-      leftEar.play(centralTone + (binauralBeat[2] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[2] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[2] / 2));
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
+      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
 
     case 'T':
       // Theta
       // start Timer 1 with the correct Offset Frequency for a binaural beat for the Brainwave Type
       //   to Right ear speaker through output OC1A (PB3, pin 15)
-      rightEar.play(centralTone - (binauralBeat[2] / 2));
-      leftEar.play(centralTone + (binauralBeat[2] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[2] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[2] / 2));
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 835, 835 );
+      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
 
     case 'd':
       // Delta
-      rightEar.play(centralTone - (binauralBeat[3] / 2));
-      leftEar.play(centralTone + (binauralBeat[3] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[3] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[3] / 2));
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
+      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'D':
       // Delta
-      rightEar.play(centralTone - (binauralBeat[3] / 2));
-      leftEar.play(centralTone + (binauralBeat[3] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[3] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[3] / 2));
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 2253, 2253 );
+      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'g':
       // Gamma
-      rightEar.play(centralTone - (binauralBeat[4] / 2));
-      leftEar.play(centralTone + (binauralBeat[4] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[4] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[4] / 2));
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
+      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
 
     case 'G':
       // Gamma
-      rightEar.play(centralTone - (binauralBeat[4] / 2));
-      leftEar.play(centralTone + (binauralBeat[4] / 2));
+      rightEarTone.play(centralTone - (binauralBeat[4] / 2));
+      leftEarTone.play(centralTone + (binauralBeat[4] / 2));
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&brainwaveTab[index].bwDuration), 124, 124 );
+      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
 
     // this should never be executed, since we catch the end of table in the main loop
     default:
