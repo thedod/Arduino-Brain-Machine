@@ -55,11 +55,8 @@
   in many places.
 ***************************************************/
 
-// =============== uncomment for debug options ===============
-// --- Serial debugging
+// =============== uncomment for serial debugging ===============
 // #define DEBUG
-// --- Do a short session (usefull when debugging sleep mode)
-// #define SHORT_SESSION
 // =========================================================================
 
 #define rightEarPin 9 // Define pinout for left ear
@@ -332,6 +329,7 @@ void setup()  {
 ***************************************************/
 
 void loop() {
+  int j;
 #ifdef DEBUG
   Serial.println("Waiting for session selection...");
 #endif
@@ -342,91 +340,80 @@ void loop() {
   }
   setLEDs(LED_OFF);
 
+
 #ifdef DEBUG
   Serial.print("Chose session #");
   Serial.println(currentSession);
 #endif
   unsigned long startedAt = millis();
-  int j = 0;
-  switch (currentSession) {
-    case SESSION_SETUP:
-      while (machineState == STATE_RUNNING) {
-        LEDIntensity = mapPot(31, 255);
-        setLEDs(LED_ON);
-        delay(50);
-      }
+  j = 0;
+  if (currentSession < NUM_PROTEUS_SESSIONS) {
+    creamyBrainwaveElement *session = proteusSessions[currentSession];
+    float currentFrequency = 0.0;
+    while (session[j].frequency > 0.0) { // 0.0 signifies end of table
 #ifdef DEBUG
-      Serial.print("Set intensity (0-255) to ");
-      Serial.println(LEDIntensity);
+      Serial.print(j);
+      Serial.print(' ');
+      Serial.print(currentFrequency);
+      Serial.print(" -> ");
+      Serial.print(session[j].frequency);
+      Serial.print(" in ");
+      Serial.print(session[j].duration);
+      Serial.print(" @");
+      Serial.println(millis() - startedAt);
 #endif
-      break;
-    case SESSION_GOOD_MORNING:
-    case SESSION_GOOD_NIGHT:
-    case SESSION_VISUALS:
-    case SESSION_MEDITATION:
-      creamyBrainwaveElement *session = proteusSessions[currentSession];
-      float currentFrequency = 0.0;
-      while (session[j].frequency > 0.0) { // 0.0 signifies end of table
-#ifdef DEBUG
-        Serial.print(j);
-        Serial.print(' ');
-        Serial.print(currentFrequency);
-        Serial.print(" -> ");
-        Serial.print(session[j].frequency);
-        Serial.print(" in ");
-        Serial.print(session[j].duration);
-        Serial.print(' ');
-        Serial.println(millis() - startedAt);
-#endif
-#ifdef SHORT_SESSION
-        if (j > 2) {
-          break;  // when debugging, we don't need to do entire session
-        }
-#endif
-        if (session[j].duration) {
-          int steps = session[j].duration * 10; // we split the element to 0.1s long steps
-#ifdef DEBUG
-          Serial.print(steps);
-          Serial.println(" steps");
-#endif
-          for (int t = 0; t < steps; t++) {
-            float freq = currentFrequency + (session[j].frequency - currentFrequency) * (float(t) / steps);
-            rightEarTone.play(centralTone - (freq / 2.0));
-            leftEarTone.play(centralTone + (freq / 2.0));
-            unsigned long halfWaveLength = round(5000.0 / freq);
-            if (blink_LEDs(1000, halfWaveLength, halfWaveLength)) { // 1000 decimilisecs = 0.1s
-            };
-          };
+      if (session[j].duration) {
+        float elapsedDms = 0; // decimilliseconds since element's start
+        float totalDms = session[j].duration * 10000.0;
+        while (elapsedDms < totalDms) {
+          float freq = currentFrequency + (session[j].frequency - currentFrequency) * (elapsedDms / totalDms);
+          rightEarTone.play(centralTone - (freq / 2.0));
+          leftEarTone.play(centralTone + (freq / 2.0));
+          unsigned long halfWaveLength = round(5000.0 / freq);
+          setLEDs(LED_ON);
+          if (delay_decimiliseconds(halfWaveLength)) {
+            break;
+          }
+          setLEDs(LED_OFF);
+          if (delay_decimiliseconds(halfWaveLength)) {
+            break;
+          }
+          elapsedDms += (2.0 * halfWaveLength);
         };
-        if (machineState != STATE_RUNNING) {
-          break; // interrupt button was pressed
-        };
-        currentFrequency = session[j].frequency;
-        j++;
       };
-      break;
-    case SESSION_MEDITATION_CHUNKY:
-      while (pgm_read_byte(&chunkybrainwaveTab[j].bwType) != '0') {  // '0' signifies end of table
+      if (machineState != STATE_RUNNING) {
+        break; // interrupt button was pressed
+      };
+      currentFrequency = session[j].frequency;
+      j++;
+    };
+  } else if (currentSession == SESSION_MEDITATION_CHUNKY) {
+    while (pgm_read_byte(&chunkybrainwaveTab[j].bwType) != '0') {  // '0' signifies end of table
 #ifdef DEBUG
-        Serial.print(j);
-        Serial.print(' ');
-        Serial.print(pgm_read_byte(&chunkybrainwaveTab[j].bwType));
-        Serial.print(' ');
-        Serial.println(millis() - startedAt);
+      Serial.print(j);
+      Serial.print(' ');
+      Serial.print((char)(pgm_read_byte(&chunkybrainwaveTab[j].bwType)));
+      Serial.print(" @");
+      Serial.println(millis() - startedAt);
 #endif
-#ifdef SHORT_SESSION
-        if (j > 2) {
-          break;  // when debugging, we don't need to do entire session
-        }
-#endif
-        if (do_chunky_brainwave_element(j)) {
-          // interrupt button got us out of STATE_RUNNING
-          break;
-        }
-        j++;
+      if (do_chunky_brainwave_element(j)) {
+        // interrupt button got us out of STATE_RUNNING
+        break;
       }
-      break;
-  }
+      j++;
+    }
+  } else if (currentSession == SESSION_SETUP) {
+    while (machineState == STATE_RUNNING) {
+      LEDIntensity = mapPot(31, 255);
+      setLEDs(LED_ON);
+      delay(50);
+    }
+#ifdef DEBUG
+    Serial.print("Set intensity (0-255) to ");
+    Serial.println(LEDIntensity);
+#endif
+  };
+
   setLEDs(LED_OFF);
   rightEarTone.stop();
   leftEarTone.stop();
