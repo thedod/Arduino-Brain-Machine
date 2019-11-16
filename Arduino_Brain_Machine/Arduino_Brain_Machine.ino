@@ -427,6 +427,9 @@ void loop() {
       }
       break;
   }
+  setLEDs(LED_OFF);
+  rightEarTone.stop();
+  leftEarTone.stop();
 #ifdef DEBUG
   Serial.print("Done #");
   Serial.print(currentSession);
@@ -437,9 +440,6 @@ void loop() {
     // Session finished (we're not here due to an interrupt button push)
     // Shut down everything and put the CPU to sleep
     machineState = STATE_SLEEPING;
-    setLEDs(LED_OFF);
-    rightEarTone.stop();
-    leftEarTone.stop();
 #ifdef DEBUG
     Serial.println("Sleeping...");
     delay(1000); // let the dust settle...
