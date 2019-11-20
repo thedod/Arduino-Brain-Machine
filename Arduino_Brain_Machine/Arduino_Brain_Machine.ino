@@ -215,6 +215,14 @@ const creamyBrainwaveElement proteusVisuals22[] = {
   {60, 30}, {300, 24}, {30, 12}, {30, 24}, {30, 16}, {120, 30}, {150, 8}, {60, 8}, {0, 0}
 };
 
+const creamyBrainwaveElement proteusVisuals33[] = {
+  {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
+  {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
+  {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
+  {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15}, {0, 0}
+};
+
+
 const creamyBrainwaveElement proteusMeditation10[] = {
   {0, 16}, {60, 16}, {240, 4}, {360, 4}, {120, 2}, {1080, 2}, {60, 8}, {60, 24},
   {120, 24}, {0, 0}
@@ -240,7 +248,7 @@ int currentSession;
 
 const creamyBrainwaveElement *proteusSessions[NUM_PROTEUS_SESSIONS] = {
   proteusGoodMorning04, proteusGoodNight43,
-  proteusVisuals22, proteusMeditation10
+  proteusVisuals33, proteusMeditation10
 };
 
 int blink_patterns[NUM_SESSIONS] = {
