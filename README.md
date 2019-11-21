@@ -8,7 +8,7 @@ see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
 #### Difference from fork's origin:
 
 1. The machine can now run 5 different sessions (including the original one). Except for the the original
-   session that uses [frequency hopping](https://archive.md/leNZO#selection-1151.0-1151.493) for brainwave entrainment (aka the "chunky" method), the other 4 use smooth frequency transition (aka the "creamy" method), and are based on [Mindplace](https://mindplace.com/) [Proteus](http://mindplacesupport.com/proteus/) sessions (thanks to the admins and members of the mindplace [support forum](http://mindplacesupport.com/forum/) for all the attention and knowledge).
+   session that uses [frequency hopping](https://archive.md/leNZO#selection-1151.0-1151.493) for brainwave entrainment (aka the "chunky" method), the other 4 use smooth frequency transition (aka the "creamy" method), and are based on [Mindplace](https://mindplace.com/) [Proteus](http://mindplacesupport.com/proteus/) sessions (thanks to the admins and members of the mindplace [support forum](http://mindplacesupport.com/forum/) for all the attention and knowledge). There's a 10㏀ potentiometer on pi A0 that is used to select the session.
 
 1. Pin 2 (that used to be the "wake up button") now has 3 functions (depending on state): start / stop / wake (from sleep mode), and the button's interrupt is always attached (not only during sleep mode).
 
