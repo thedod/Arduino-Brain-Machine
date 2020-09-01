@@ -22,6 +22,10 @@ see [the wiki](https://github.com/thedod/Arduino-Brain-Machine/wiki).
 
 #### [Photos](https://pixelfed.tokyo/c/89862350668173312)
 
+### New: mono (isochronic) variant
+
+See `Arduino_Brain_Machine_Mono/` folder for code, and `arduino-brain-machine-mono*` for schematics.
+
 ### Original README.txt
 
     Repository: Brain Machine for Arduino
