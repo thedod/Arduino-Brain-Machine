@@ -291,15 +291,6 @@ int mapPot(int mapMin, int mapMax) {
            mapMin, mapMax);
 }
 
-void setLEDs(int state) {
-  analogWrite(LEDRelayPin, state);
-  analogWrite(audioRelayPin, state);
-}
-
-void blinkSessionSelection(int session) {
-  setLEDs(blink_patterns[session] >> CURRENT_BLINK_SEGMENT & 1 ? LED_WEAK : LED_OFF);
-}
-
 /***************************************************
   Button interrupt
 ***************************************************/
@@ -319,6 +310,16 @@ void buttonInterrupt()
       machineState = STATE_READY; // Back to the normal ready/running cycle
       break;
   }
+}
+
+
+void setLEDs(int state) {
+  analogWrite(LEDRelayPin, state);
+  analogWrite(audioRelayPin, machineState==STATE_RUNNING ? state : LED_OFF);
+}
+
+void blinkSessionSelection(int session) {
+  setLEDs(blink_patterns[session] >> CURRENT_BLINK_SEGMENT & 1 ? LED_WEAK : LED_OFF);
 }
 
 
